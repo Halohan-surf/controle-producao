@@ -32,10 +32,15 @@ def salvar():
             "hora_inicio": agora.time().isoformat()
         }
 
-        requests.post(f"{SUPABASE_URL}/rest/v1/producao", json=payload, headers=headers)
+        res = requests.post(
+            f"{SUPABASE_URL}/rest/v1/producao",
+            json=payload,
+            headers=headers
+        )
+        print(res.text)
 
     elif data["acao"] == "concluir":
-        requests.patch(
+        res = requests.patch(
             f"{SUPABASE_URL}/rest/v1/producao?operador=eq.{data['operador']}&data_fim=is.null",
             json={
                 "data_fim": agora.date().isoformat(),
@@ -43,6 +48,7 @@ def salvar():
             },
             headers=headers
         )
+        print(res.text)
 
     return jsonify({"ok": True})
 
