@@ -17,6 +17,35 @@ headers = {
     "Prefer": "return=minimal"
 }
 
+headers_get = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
+
+@app.route("/estado", methods=["GET"])
+def estado():
+    # Retorna todos os registros ativos (sem data_fim) — um por operador
+    res = requests.get(
+        f"{SUPABASE_URL}/rest/v1/producao?data_fim=is.null&select=operador,op,produto,tipo,hora_inicio,data_inicio",
+        headers=headers_get
+    )
+    registros = res.json()
+
+    # Monta dicionário { operador: { op, produto, tipo, inicio } }
+    estado = {}
+    for r in registros:
+        # Reconstrói o ISO datetime de início para o frontend calcular o timer
+        inicio_iso = f"{r['data_inicio']}T{r['hora_inicio']}"
+        estado[r["operador"]] = {
+            "op": r["op"],
+            "produto": r["produto"],
+            "tipo": r["tipo"],
+            "inicio": inicio_iso
+        }
+
+    return jsonify(estado)
+
 @app.route("/", methods=["POST"])
 def salvar():
     data = request.json
@@ -54,3 +83,4 @@ def salvar():
 
 port = int(os.environ.get("PORT", 5000))
 app.run(host="0.0.0.0", port=port)
+
