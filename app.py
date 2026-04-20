@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import requests
 from datetime import datetime
@@ -22,6 +22,10 @@ headers_get = {
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json"
 }
+
+@app.route("/app")
+def frontend():
+    return send_file("Controle.html")
 
 @app.route("/estado", methods=["GET"])
 def estado():
