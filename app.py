@@ -25,18 +25,16 @@ headers_get = {
 
 @app.route("/estado", methods=["GET"])
 def estado():
-    # Retorna todos os registros ativos (sem data_fim) — um por operador
     res = requests.get(
         f"{SUPABASE_URL}/rest/v1/producao?data_fim=is.null&select=operador,op,produto,tipo,hora_inicio,data_inicio",
         headers=headers_get
     )
     registros = res.json()
 
-    # Monta dicionário { operador: { op, produto, tipo, inicio } }
     estado = {}
     for r in registros:
-        # Reconstrói o ISO datetime de início para o frontend calcular o timer
-        inicio_iso = f"{r['data_inicio']}T{r['hora_inicio']}"
+        # Adiciona Z no final para indicar UTC — o browser interpreta corretamente
+        inicio_iso = f"{r['data_inicio']}T{r['hora_inicio']}Z"
         estado[r["operador"]] = {
             "op": r["op"],
             "produto": r["produto"],
@@ -49,16 +47,17 @@ def estado():
 @app.route("/", methods=["POST"])
 def salvar():
     data = request.json
-    agora = datetime.now()
 
     if data["acao"] == "iniciar":
+        # Usa o horario enviado pelo frontend (ISO UTC) para evitar diferenca de fuso
+        inicio = datetime.fromisoformat(data["inicio"].replace("Z", "+00:00"))
         payload = {
             "operador": data["operador"],
             "op": data["op"],
             "produto": data["produto"],
             "tipo": data["tipo"],
-            "data_inicio": agora.date().isoformat(),
-            "hora_inicio": agora.time().isoformat()
+            "data_inicio": inicio.date().isoformat(),
+            "hora_inicio": inicio.time().isoformat()
         }
 
         res = requests.post(
@@ -69,6 +68,7 @@ def salvar():
         print(res.text)
 
     elif data["acao"] == "concluir":
+        agora = datetime.utcnow()
         res = requests.patch(
             f"{SUPABASE_URL}/rest/v1/producao?operador=eq.{data['operador']}&data_fim=is.null",
             json={
@@ -83,4 +83,3 @@ def salvar():
 
 port = int(os.environ.get("PORT", 5000))
 app.run(host="0.0.0.0", port=port)
-
