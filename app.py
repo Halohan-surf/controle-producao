@@ -33,8 +33,8 @@ def estado():
 
     estado = {}
     for r in registros:
-        # Adiciona Z no final para indicar UTC — o browser interpreta corretamente
-        inicio_iso = f"{r['data_inicio']}T{r['hora_inicio']}Z"
+        # Horario local salvo sem fuso — envia sem Z para o browser tratar como local
+        inicio_iso = f"{r['data_inicio']}T{r['hora_inicio']}"
         estado[r["operador"]] = {
             "op": r["op"],
             "produto": r["produto"],
@@ -49,15 +49,15 @@ def salvar():
     data = request.json
 
     if data["acao"] == "iniciar":
-        # Usa o horario enviado pelo frontend (ISO UTC) para evitar diferenca de fuso
-        inicio = datetime.fromisoformat(data["inicio"].replace("Z", "+00:00"))
+        # Horario local enviado pelo frontend (ex: "2024-04-20T17:50:00")
+        inicio = datetime.fromisoformat(data["inicio"])
         payload = {
             "operador": data["operador"],
             "op": data["op"],
             "produto": data["produto"],
             "tipo": data["tipo"],
             "data_inicio": inicio.date().isoformat(),
-            "hora_inicio": inicio.time().isoformat()
+            "hora_inicio": inicio.strftime("%H:%M:%S")
         }
 
         res = requests.post(
@@ -68,12 +68,14 @@ def salvar():
         print(res.text)
 
     elif data["acao"] == "concluir":
-        agora = datetime.utcnow()
+        # Hora local do servidor — ajustada para horario de Brasilia
+        from datetime import timezone, timedelta
+        agora = datetime.now(timezone(timedelta(hours=-3)))
         res = requests.patch(
             f"{SUPABASE_URL}/rest/v1/producao?operador=eq.{data['operador']}&data_fim=is.null",
             json={
                 "data_fim": agora.date().isoformat(),
-                "hora_fim": agora.time().isoformat()
+                "hora_fim": agora.strftime("%H:%M:%S")
             },
             headers=headers
         )
