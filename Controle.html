@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cycle Time Register</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', Arial, sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1a1a2e;
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  header .status-sync {
+    margin-left: auto;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.8;
+  }
+
+  header span.dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: pulse 2s infinite;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  header span.dot.erro { background: #f87171; animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    padding: 24px;
+  }
+
+  .card {
+    border-radius: 14px;
+    color: white;
+    cursor: pointer;
+    padding: 18px;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.18); }
+  .card:active { transform: scale(0.98); }
+
+  .card .nome { font-size: 15px; font-weight: 600; }
+  .card .info { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+  .card .timer { font-size: 22px; font-weight: 600; letter-spacing: 1px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .card .badge {
+    font-size: 11px; font-weight: 500; padding: 3px 8px;
+    border-radius: 20px; background: rgba(255,255,255,0.25);
+    display: inline-block; margin-top: 6px; width: fit-content;
+  }
+
+  .cinza { background: linear-gradient(135deg, #6b7280, #9ca3af); }
+  .verde { background: linear-gradient(135deg, #059669, #34d399); }
+  .vermelho { background: linear-gradient(135deg, #dc2626, #f87171); }
+
+  .modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal.show { display: flex; }
+
+  .modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    width: 92%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .modal-header h3 { font-size: 17px; font-weight: 600; color: #1a1a2e; }
+  .modal-header .fechar-x {
+    background: #f3f4f6; border: none; cursor: pointer;
+    width: 30px; height: 30px; border-radius: 50%;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+    color: #6b7280;
+  }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px;
+    border: 1.5px solid #e5e7eb; border-radius: 8px;
+    font-size: 14px; font-family: inherit; color: #1a1a2e;
+    background: #fafafa;
+    outline: none; transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: #1a1a2e; background: white; }
+  .field input.erro, .field select.erro { border-color: #ef4444; }
+  .field .msg-erro { font-size: 12px; color: #ef4444; margin-top: 4px; display: none; }
+  .field .msg-erro.show { display: block; }
+
+  .aviso-concluir {
+    background: #fef3c7; border: 1px solid #f59e0b;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 13px; color: #92400e;
+    margin-bottom: 14px; display: none;
+  }
+  .aviso-concluir.show { display: block; }
+
+  .aviso-pokayoke {
+    background: #eff6ff; border: 1px solid #3b82f6;
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 13px; color: #1e40af;
+    margin-bottom: 14px; display: none;
+  }
+  .aviso-pokayoke.show { display: block; }
+  .aviso-pokayoke strong { font-weight: 600; }
+
+  .field select.travado {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1e40af;
+    font-weight: 500;
+    cursor: not-allowed;
+  }
+
+  .btns { display: flex; gap: 10px; margin-top: 6px; }
+
+  .btn {
+    flex: 1; padding: 11px; border-radius: 8px;
+    font-size: 14px; font-weight: 500; font-family: inherit;
+    cursor: pointer; border: none; transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-iniciar { background: #1a1a2e; color: white; }
+  .btn-concluir { background: #dc2626; color: white; }
+  .btn-fechar { background: #f3f4f6; color: #374151; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="dot" id="dot-sync"></span>
+  <h1>Cycle Time Register</h1>
+  <div class="status-sync" id="status-sync">Conectando...</div>
+</header>
+
+<div class="grid" id="operadores"></div>
+
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="nome-modal"></h3>
+      <button class="fechar-x" onclick="fechar()">&#x2715;</button>
+    </div>
+
+    <div class="aviso-concluir" id="aviso-concluir">
+      &#x26A0;&#xFE0F; Este operador já tem uma tarefa em andamento. Conclua antes de iniciar uma nova.
+    </div>
+
+    <div class="aviso-pokayoke" id="aviso-pokayoke">
+      &#x1F512; Poka-yoke: a OP <strong id="pokayoke-op"></strong> já está registrada com o produto <strong id="pokayoke-produto"></strong>. Campo preenchido automaticamente.
+    </div>
+
+    <div class="field">
+      <label>Ordem de Produção</label>
+      <input id="op" placeholder="Ex: OP-20240001">
+      <div class="msg-erro" id="erro-op">Preencha a Ordem de Produção.</div>
+    </div>
+
+    <div class="field">
+      <label>Produto</label>
+      <select id="produto">
+        <option value="">Selecione um produto...</option>
+        <option>Core Box</option>
+        <option>ECU</option>
+        <option>Encoder</option>
+        <option>Display Ti10</option>
+        <option>Display Ti5+</option>
+        <option>Harness</option>
+      </select>
+      <div class="msg-erro" id="erro-produto">Selecione um produto.</div>
+    </div>
+
+    <div class="field">
+      <label>Tipo</label>
+      <select id="tipo">
+        <option value="">Selecione o tipo...</option>
+        <option>Montagem</option>
+        <option>Retrabalho</option>
+      </select>
+      <div class="msg-erro" id="erro-tipo">Selecione o tipo.</div>
+    </div>
+
+    <div class="btns">
+      <button class="btn btn-iniciar" id="btn-iniciar" onclick="iniciar()">Iniciar</button>
+      <button class="btn btn-concluir" id="btn-concluir" onclick="concluir()">Concluir</button>
+      <button class="btn btn-fechar" onclick="fechar()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVIDOR = "https://controle-producao-0ch7.onrender.com";
+
+const operadores = [
+  "Alexsandro Santos",
+  "Edson Ferreira",
+  "Fabio Floriano",
+  "Halohan Cerqueira",
+  "Luciano Santana"
+];
+
+let ativo = {};
+let selecionado = null;
+let timerInterval = null;
+
+// Sincronizacao com servidor (polling a cada 4s)
+async function sincronizar() {
+  try {
+    const res = await fetch(`${SERVIDOR}/estado`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    ativo = await res.json();
+    setSyncStatus(true);
+  } catch (e) {
+    setSyncStatus(false);
+    console.warn("Falha ao sincronizar:", e);
+  }
+}
+
+function setSyncStatus(ok) {
+  const dot = document.getElementById("dot-sync");
+  const txt = document.getElementById("status-sync");
+  if (ok) {
+    dot.classList.remove("erro");
+    txt.textContent = "Sincronizado as " + new Date().toLocaleTimeString("pt-BR");
+  } else {
+    dot.classList.add("erro");
+    txt.textContent = "Sem conexao com servidor";
+  }
+}
+
+function startSync() {
+  sincronizar();
+  setInterval(sincronizar, 4000);
+}
+
+// Timer dos cards
+function startTimers() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(render, 1000);
+}
+
+function tempoDecorrido(isoInicio) {
+  const inicio = new Date(isoInicio);
+  const agora = new Date();
+  const diff = Math.floor((agora - inicio) / 1000);
+  const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+  const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+  const s = String(diff % 60).padStart(2, "0");
+  return h + ":" + m + ":" + s;
+}
+
+// Render
+function render() {
+  const div = document.getElementById("operadores");
+  div.innerHTML = "";
+  operadores.forEach(function(nome) {
+    const status = ativo[nome];
+    let classe = "cinza";
+    let extra = "";
+    if (status) {
+      classe = status.tipo === "Montagem" ? "verde" : "vermelho";
+      extra = "<div>" +
+        "<div class='info'>OP: " + (status.op || "—") + "</div>" +
+        "<div class='info'>" + status.produto + "</div>" +
+        "<div class='timer'>" + tempoDecorrido(status.inicio) + "</div>" +
+        "<span class='badge'>" + status.tipo + "</span>" +
+        "</div>";
+    } else {
+      extra = "<div class='info' style='opacity:0.6;margin-top:auto;'>Disponivel</div>";
+    }
+    div.innerHTML += "<div class='card " + classe + "' onclick=\"abrir('" + nome + "')\">" +
+      "<div class='nome'>" + nome + "</div>" + extra + "</div>";
+  });
+}
+
+// Modal
+function abrir(nome) {
+  selecionado = nome;
+  document.getElementById("nome-modal").innerText = nome;
+  document.getElementById("modal").classList.add("show");
+
+  const temAtivo = !!ativo[nome];
+  const aviso = document.getElementById("aviso-concluir");
+  const btnIniciar = document.getElementById("btn-iniciar");
+  const btnConcluir = document.getElementById("btn-concluir");
+
+  limparErros();
+
+  if (temAtivo) {
+    aviso.classList.add("show");
+    btnIniciar.disabled = true;
+    btnConcluir.disabled = false;
+    document.getElementById("op").value = ativo[nome].op;
+    document.getElementById("produto").value = ativo[nome].produto;
+    document.getElementById("tipo").value = ativo[nome].tipo;
+    document.getElementById("op").disabled = true;
+    document.getElementById("produto").disabled = true;
+    document.getElementById("tipo").disabled = true;
+  } else {
+    aviso.classList.remove("show");
+    btnIniciar.disabled = false;
+    btnConcluir.disabled = true;
+    document.getElementById("op").value = "";
+    document.getElementById("produto").value = "";
+    document.getElementById("tipo").value = "";
+    document.getElementById("op").disabled = false;
+    document.getElementById("produto").disabled = false;
+    document.getElementById("tipo").disabled = false;
+    setTimeout(function() { document.getElementById("op").focus(); }, 100);
+  }
+}
+
+function fechar() {
+  document.getElementById("modal").classList.remove("show");
+  limparErros();
+}
+
+function limparErros() {
+  ["op", "produto", "tipo"].forEach(function(id) {
+    document.getElementById(id).classList.remove("erro");
+    document.getElementById("erro-" + id).classList.remove("show");
+  });
+  const selectProduto = document.getElementById("produto");
+  selectProduto.classList.remove("travado");
+  selectProduto.disabled = false;
+  document.getElementById("aviso-pokayoke").classList.remove("show");
+}
+
+// Poka-yoke
+function verificarPokayoke() {
+  const opDigitada = document.getElementById("op").value.trim().toUpperCase();
+  const selectProduto = document.getElementById("produto");
+  const aviso = document.getElementById("aviso-pokayoke");
+  selectProduto.classList.remove("travado");
+  selectProduto.disabled = false;
+  aviso.classList.remove("show");
+  if (!opDigitada) return;
+  for (const operador in ativo) {
+    if (operador === selecionado) continue;
+    const dados = ativo[operador];
+    if (dados.op && dados.op.trim().toUpperCase() === opDigitada) {
+      selectProduto.value = dados.produto;
+      selectProduto.disabled = true;
+      selectProduto.classList.add("travado");
+      document.getElementById("pokayoke-op").innerText = dados.op;
+      document.getElementById("pokayoke-produto").innerText = dados.produto;
+      aviso.classList.add("show");
+      return;
+    }
+  }
+}
+
+document.getElementById("op").addEventListener("blur", verificarPokayoke);
+document.getElementById("op").addEventListener("input", verificarPokayoke);
+document.getElementById("op").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    verificarPokayoke();
+    const selectProduto = document.getElementById("produto");
+    if (!selectProduto.disabled) selectProduto.focus();
+    else document.getElementById("tipo").focus();
+  }
+});
+
+// Validacao
+function validar() {
+  let ok = true;
+  limparErros();
+  if (!document.getElementById("op").value.trim()) {
+    document.getElementById("op").classList.add("erro");
+    document.getElementById("erro-op").classList.add("show");
+    ok = false;
+  }
+  if (!document.getElementById("produto").value) {
+    document.getElementById("produto").classList.add("erro");
+    document.getElementById("erro-produto").classList.add("show");
+    ok = false;
+  }
+  if (!document.getElementById("tipo").value) {
+    document.getElementById("tipo").classList.add("erro");
+    document.getElementById("erro-tipo").classList.add("show");
+    ok = false;
+  }
+  return ok;
+}
+
+// Acoes
+async function iniciar() {
+  if (!validar()) return;
+  const dados = {
+    op: document.getElementById("op").value.trim(),
+    produto: document.getElementById("produto").value,
+    tipo: document.getElementById("tipo").value,
+    inicio: new Date().toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" }).replace(" ", "T")
+  };
+  ativo[selecionado] = dados;
+  fechar();
+  render();
+  await salvarServidor(dados, selecionado, "iniciar");
+  await sincronizar();
+}
+
+async function concluir() {
+  if (!ativo[selecionado]) return;
+  const dados = ativo[selecionado];
+  delete ativo[selecionado];
+  fechar();
+  render();
+  await salvarServidor(dados, selecionado, "concluir");
+  await sincronizar();
+}
+
+async function salvarServidor(dados, operador, acao) {
+  try {
+    await fetch(SERVIDOR, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(Object.assign({}, dados, { operador: operador, acao: acao }))
+    });
+  } catch (err) {
+    console.warn("Erro ao enviar para servidor:", err);
+  }
+}
+
+startSync();
+startTimers();
+</script>
+<div style="position:fixed;bottom:12px;left:16px;font-family:Arial,sans-serif;font-size:12px;color:#9ca3af;">Developed By Halohan Cerqueira - Rev001</div>
+</body>
+</html>
